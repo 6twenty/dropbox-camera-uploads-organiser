@@ -178,7 +178,7 @@ class CameraOrganiser
 
     create_other_folder(folder_path) unless has_other_folder
 
-    move_files(files_to_move, folder_path)
+    move_files(files_to_move, folder_path) if files_to_move.any?
   end
 
   def process_file(entry, files)
