@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require './app'
+
+DateOrganiser.new.run!
+CameraOrganiser.new.run!
