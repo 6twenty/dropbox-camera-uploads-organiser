@@ -134,8 +134,7 @@ class CameraOrganiser
 
   def run!
     get_folders
-    process_folders # TODO: remove
-    # process_folder(@folder) # TODO: add
+    process_folders
   end
 
   def get_folders
@@ -143,10 +142,10 @@ class CameraOrganiser
       path: '/Camera Uploads'
     })
 
-    folders = data['entries'].map { |entry| entry['path_display'] }.sort
+    @folders = data['entries'].map { |entry| entry['path_display'] }.sort
 
-    @folder = folders.last
-    @folders = folders # TODO: remove
+    # Only the 2 most recent folders need to be processed
+    @folder = @folders.last(2)
   end
 
   def process_folders
