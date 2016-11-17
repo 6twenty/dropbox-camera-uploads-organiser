@@ -43,11 +43,14 @@ class DateOrganiser
   end
 
   def run!
-    get_files
-    create_folders
-    move_files
+    puts "DateOrganiser"
+    puts "=============\n"
 
-    puts "Finished."
+    get_files
+    create_folders if (@files.keys - @folders).any?
+    move_files if @files.values.flatten.any?
+
+    puts "Finished.\n"
   end
 
   def get_files
@@ -150,10 +153,13 @@ class CameraOrganiser
   end
 
   def run!
+    puts "CameraOrganiser"
+    puts "===============\n"
+
     get_folders
     process_folders
 
-    puts "Finished."
+    puts "Finished.\n"
   end
 
   def get_folders
@@ -179,7 +185,7 @@ class CameraOrganiser
   end
 
   def process_folder(folder_path)
-    print "Retrieving directory listing for 'Camera Uploads/#{folder_path}'..."
+    print "Retrieving directory listing for '#{folder_path}'..."
 
     data = @client.post('list_folder', {
       path: folder_path
