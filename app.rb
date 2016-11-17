@@ -122,8 +122,12 @@ class CameraOrganiser
 
     @other_folder_name = 'Other'
     @iphone_5c_name = 'iPhone 5c'
+    @processed_file_path = './processed'
 
-    File.open('./processed', 'r') do |file|
+    # Create the 'processed' file if it doesn't exist
+    File.open(@processed_file_path, 'a')
+
+    File.open(@processed_file_path, 'r') do |file|
       @processed_files = file.read.split("\n")
     end
   end
@@ -194,7 +198,7 @@ class CameraOrganiser
 
     @processed_files << entry['path_display']
 
-    File.open('./processed', 'a') do |file|
+    File.open(@processed_file_path, 'a') do |file|
       file.puts entry['path_display']
     end
   end
