@@ -219,7 +219,8 @@ class CameraOrganiser
       files << entry
     end
   rescue => e
-    # Move on
+    # Can't read EXIF - not likely to be an iPhone 5c photo
+    files << entry
   ensure
     File.unlink('./temp')
   end
