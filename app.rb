@@ -46,10 +46,13 @@ class DateOrganiser
     get_files
     create_folders
     move_files
-    self
+
+    puts "Finished."
   end
 
   def get_files
+    print "Retrieving directory listing for 'Camera Uploads'..."
+
     data = @client.post('list_folder', {
       path: "/Camera Uploads",
       recursive: false,
@@ -59,6 +62,10 @@ class DateOrganiser
     })
 
     parse_files_data(data)
+
+    puts " Done."
+    puts "-> Found #{@files.values.flatten.length} files to process, covering #{@files.keys.length} months."
+    puts "-> #{(@files.keys - @folders).length} folders need to be created."
   end
 
   def get_more_files(cursor)
@@ -89,26 +96,36 @@ class DateOrganiser
 
   def create_folders
     (@files.keys - @folders).each do |folder_name|
+      print "Creating folder '#{folder_name}'..."
+
       @client.post('create_folder', {
         path: "/Camera Uploads/#{folder_name}"
       })
+
+      puts " Done."
     end
   end
 
   def move_files
-    @files.each do |group, files|
-      entries = files.map do |entry|
+    print "Moving #{@files.values.flatten.length} files..."
+
+    entries = @files.reduce([]) do |entries, (group, files)|
+      entries += files.map do |entry|
         {
           from_path: entry['path_display'],
           to_path: "/Camera Uploads/#{group}/#{entry['name']}"
         }
       end
+    end
 
-      puts "Moving #{files.length} files into '#{group}'"
+    data = @client.post('move_batch', {
+      entries: entries
+    })
 
-      data = @client.post('move_batch', {
-        entries: entries
-      })
+    puts " Done."
+
+    if data['.tag'] == 'async_job_id'
+      puts "-> Job ID: #{data['async_job_id']}"
     end
   end
 
@@ -135,9 +152,13 @@ class CameraOrganiser
   def run!
     get_folders
     process_folders
+
+    puts "Finished."
   end
 
   def get_folders
+    print "Retrieving list of folders in 'Camera Uploads'..."
+
     data = @client.post('list_folder', {
       path: '/Camera Uploads'
     })
@@ -145,7 +166,10 @@ class CameraOrganiser
     @folders = data['entries'].map { |entry| entry['path_display'] }.sort
 
     # Only the 2 most recent folders need to be processed
-    @folder = @folders.last(2)
+    @folders = @folders.last(2)
+
+    puts " Done."
+    puts "-> Found '#{@folders.first}' and '#{@folders.last}' for processing."
   end
 
   def process_folders
@@ -155,9 +179,14 @@ class CameraOrganiser
   end
 
   def process_folder(folder_path)
+    print "Retrieving directory listing for 'Camera Uploads/#{folder_path}'..."
+
     data = @client.post('list_folder', {
       path: folder_path
     })
+
+    puts " Done."
+    print "Scanning files..."
 
     files = []
 
@@ -174,6 +203,8 @@ class CameraOrganiser
     files_to_move = files.reduce([]) do |files, entry|
       files.tap { |files| process_file(entry, files) }
     end
+
+    puts " Done."
 
     create_other_folder(folder_path) unless has_other_folder
 
@@ -236,17 +267,23 @@ class CameraOrganiser
       }
     end
 
-    puts "Moving #{files.length} files into '#{folder_path}/#{@other_folder_name}'"
+    print "Moving #{files.length} files into '#{folder_path}/#{@other_folder_name}'..."
 
     data = @client.post('move_batch', {
       entries: entries
     })
+
+    puts " Done."
   end
 
   def create_other_folder(folder_path)
+    print "Creating folder 'Camera Uploads/#{folder_path}'..."
+
     @client.post('create_folder', {
       path: "#{folder_path}/#{@other_folder_name}"
     })
+
+    puts " Done."
   end
 
 end
