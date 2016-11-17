@@ -2,6 +2,7 @@ require 'bundler/setup'
 require 'dotenv'
 require 'rack/oauth2'
 require 'exif'
+require 'fileutils'
 
 Dotenv.load
 
@@ -169,7 +170,10 @@ class CameraOrganiser
       path: '/Camera Uploads'
     })
 
-    @folders = data['entries'].map { |entry| entry['path_display'] }.sort
+    @folders = data['entries']
+      .select { |entry| entry['.tag'] == 'folder' }
+      .map { |entry| entry['path_display'] }
+      .sort
 
     # Only the 2 most recent folders need to be processed
     @folders = @folders.last(2)
@@ -290,6 +294,92 @@ class CameraOrganiser
     })
 
     puts " Done."
+  end
+
+end
+
+class Downloader
+
+  def initialize
+    @client = Client.new('api.dropboxapi.com')
+    @dl_client = Client.new('content.dropboxapi.com')
+
+    @target_directory = ENV['DOWNLOAD_ROOT']
+    @other_folder_name = 'Other'
+  end
+
+  def run!
+    puts "Downloader"
+    puts "===============\n\n"
+
+    get_folders
+    process_folders
+
+    puts "Finished.\n\n"
+  end
+
+  def get_folders
+    print "Retrieving list of folders in 'Camera Uploads'..."
+
+    data = @client.post('list_folder', {
+      path: '/Camera Uploads'
+    })
+
+    @folders = data['entries']
+      .select { |entry| entry['.tag'] == 'folder' }
+      .map { |entry| entry['path_display'] }
+      .sort
+
+    puts " Done."
+    puts "-> Found #{@folders.length} folders."
+  end
+
+  def process_folders
+    @folders.each do |folder_path|
+      process_folder(folder_path)
+    end
+  end
+
+  def process_folder(folder_path)
+    download_files(folder_path)
+    download_files("#{folder_path}/#{@other_folder_name}")
+  end
+
+  def download_files(folder_path)
+    files = get_files(folder_path)
+
+    print "Downloading #{files.length} files in '#{folder_path}'..."
+
+    files.each do |entry|
+      download_file(entry)
+    end
+
+    puts " Done."
+  end
+
+  def get_files(folder_path)
+    data = @client.post('list_folder', {
+      path: folder_path
+    })
+
+    if data['error']
+      return []
+    end
+
+    data['entries'].select { |entry| entry['.tag'] == 'file' }
+  end
+
+  def download_file(entry)
+    body = @dl_client.post('download', {
+      path: entry['path_display']
+    })
+
+    target_path = "#{@target_directory}#{entry['path_display']}"
+    target_directory = target_path.split('/').tap(&:pop).join('/')
+
+    FileUtils.mkdir_p(target_directory)
+    File.open(target_path, 'a') # Create the file
+    File.open(target_path, 'w') { |file| file.write(body) }
   end
 
 end
