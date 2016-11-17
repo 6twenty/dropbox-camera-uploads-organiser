@@ -44,13 +44,13 @@ class DateOrganiser
 
   def run!
     puts "DateOrganiser"
-    puts "=============\n"
+    puts "=============\n\n"
 
     get_files
     create_folders if (@files.keys - @folders).any?
     move_files if @files.values.flatten.any?
 
-    puts "Finished.\n"
+    puts "Finished.\n\n"
   end
 
   def get_files
@@ -154,12 +154,12 @@ class CameraOrganiser
 
   def run!
     puts "CameraOrganiser"
-    puts "===============\n"
+    puts "===============\n\n"
 
     get_folders
     process_folders
 
-    puts "Finished.\n"
+    puts "Finished.\n\n"
   end
 
   def get_folders
@@ -192,7 +192,7 @@ class CameraOrganiser
     })
 
     puts " Done."
-    print "Scanning files..."
+    print "Scanning #{data['entries'].length} files..."
 
     files = []
 
