@@ -169,7 +169,6 @@ class CameraOrganiser
     end
 
     files_to_move = files.reduce([]) do |files, entry|
-      puts "Processing #{entry['name']}"
       files.tap { |files| process_file(entry, files) }
     end
 
@@ -192,6 +191,8 @@ class CameraOrganiser
     # much more likely to be keepers anyway.
     ext = entry['name'].split('.').last
     return if ext =~ /mov/i
+
+    puts "Processing #{entry['name']}"
 
     download_and_save_file(entry)
     process_temp_file(entry, files)
