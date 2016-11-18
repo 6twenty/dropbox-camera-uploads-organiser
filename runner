@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# ./runner >>nohup.out 2>&1
+# [nohup] ./runner >>nohup.out 2>&1
 
 require './app'
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# ./downloader >>nohup.out 2>&1
+# [nohup] ./downloader >>nohup.out 2>&1
 
 require './app'
 

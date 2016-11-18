@@ -142,7 +142,8 @@ class CameraOrganiser
     @dl_client = Client.new('content.dropboxapi.com')
 
     @other_folder_name = 'Other'
-    @iphone_5c_name = 'iPhone 5c'
+    @iphone_5c = 'iPhone 5c'
+    @iphone_3gs = 'iPhone 3GS'
     @processed_file_path = './processed'
 
     # Create the 'processed' file if it doesn't exist
@@ -176,7 +177,7 @@ class CameraOrganiser
       .sort
 
     # Only the 2 most recent folders need to be processed
-    @folders = @folders.last(2)
+    # @folders = @folders.last(2)
 
     puts " Done."
     puts "-> Found '#{@folders.first}' and '#{@folders.last}' for processing."
@@ -185,6 +186,7 @@ class CameraOrganiser
   def process_folders
     @folders.each do |folder_path|
       process_folder(folder_path)
+      process_other_folder(folder_path)
     end
   end
 
@@ -217,6 +219,40 @@ class CameraOrganiser
     puts " Done."
 
     create_other_folder(folder_path) unless has_other_folder
+
+    other_path = "#{folder_path}/#{@other_folder_name}"
+    move_files(files_to_move, other_path) if files_to_move.any?
+  end
+
+  def process_other_folder(folder_path)
+    other_path = "#{folder_path}/#{@other_folder_name}"
+
+    print "Retrieving directory listing for '#{other_path}'..."
+
+    data = @client.post('list_folder', {
+      path: other_path
+    })
+
+    if data['error']
+      return
+    end
+
+    puts " Done."
+    print "Scanning #{data['entries'].length} files..."
+
+    files = []
+
+    data['entries'].each do |entry|
+      files << entry if entry['.tag'] == 'file'
+    end
+
+    files_to_remain = files.reduce([]) do |files, entry|
+      files.tap { |files| process_file(entry, files) }
+    end
+
+    files_to_move = data['entries'] - files_to_remain
+
+    puts " Done."
 
     move_files(files_to_move, folder_path) if files_to_move.any?
   end
@@ -259,7 +295,7 @@ class CameraOrganiser
   def process_temp_file(entry, files)
     exif = Exif::Data.new('./temp')
 
-    unless exif.model == @iphone_5c_name
+    unless exif.model == @iphone_5c || exif.model == @iphone_3gs
       files << entry
     end
   rescue => e
@@ -273,11 +309,11 @@ class CameraOrganiser
     entries = files.map do |entry|
       {
         from_path: entry['path_display'],
-        to_path: "#{folder_path}/#{@other_folder_name}/#{entry['name']}"
+        to_path: "#{folder_path}/#{entry['name']}"
       }
     end
 
-    print "Moving #{files.length} files into '#{folder_path}/#{@other_folder_name}'..."
+    print "Moving #{files.length} files into '#{folder_path}'..."
 
     data = @client.post('move_batch', {
       entries: entries
