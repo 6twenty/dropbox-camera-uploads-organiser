@@ -180,13 +180,12 @@ class CameraOrganiser
     # @folders = @folders.last(2)
 
     puts " Done."
-    puts "-> Found '#{@folders.first}' and '#{@folders.last}' for processing."
+    puts "-> Processing #{@folders.length} folders."
   end
 
   def process_folders
     @folders.each do |folder_path|
       process_folder(folder_path)
-      process_other_folder(folder_path)
     end
   end
 
@@ -198,7 +197,7 @@ class CameraOrganiser
     })
 
     puts " Done."
-    print "Scanning #{data['entries'].length} files..."
+    puts "-> Scanning #{data['entries'].length} files."
 
     files = []
 
@@ -216,54 +215,13 @@ class CameraOrganiser
       files.tap { |files| process_file(entry, files) }
     end
 
-    puts " Done."
-
     create_other_folder(folder_path) unless has_other_folder
 
     other_path = "#{folder_path}/#{@other_folder_name}"
     move_files(files_to_move, other_path) if files_to_move.any?
   end
 
-  def process_other_folder(folder_path)
-    other_path = "#{folder_path}/#{@other_folder_name}"
-
-    print "Retrieving directory listing for '#{other_path}'..."
-
-    data = @client.post('list_folder', {
-      path: other_path
-    })
-
-    if data['error']
-      return
-    end
-
-    puts " Done."
-    print "Scanning #{data['entries'].length} files..."
-
-    files = []
-
-    data['entries'].each do |entry|
-      files << entry if entry['.tag'] == 'file'
-    end
-
-    files_to_remain = files.reduce([]) do |files, entry|
-      files.tap { |files| process_file(entry, files) }
-    end
-
-    files_to_move = data['entries'] - files_to_remain
-
-    puts " Done."
-
-    move_files(files_to_move, folder_path) if files_to_move.any?
-  end
-
   def process_file(entry, files)
-    # Download the file
-    # Save it as a (temp) file
-    # Read the exif data
-    # If it was taken on an iPhone 5c leave it;
-    # otherwise move it to the "Other" folder
-
     return if @processed_files.include?(entry['path_display'])
 
     # For now, only images are processed, not movies since
