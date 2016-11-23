@@ -177,7 +177,7 @@ class CameraOrganiser
       .sort
 
     # Only the 2 most recent folders need to be processed
-    # @folders = @folders.last(2)
+    @folders = @folders.last(2)
 
     puts " Done."
     puts "-> Processing #{@folders.length} folders."
@@ -257,7 +257,7 @@ class CameraOrganiser
       files << entry
     end
   rescue => e
-    # Can't read EXIF - not likely to be an iPhone 5c photo
+    # Can't read EXIF - not likely to be an iPhone photo
     files << entry
   ensure
     File.unlink('./temp')
@@ -281,7 +281,7 @@ class CameraOrganiser
   end
 
   def create_other_folder(folder_path)
-    print "Creating folder 'Camera Uploads/#{folder_path}'..."
+    print "Creating folder '#{folder_path}/#{@other_folder_name}'..."
 
     @client.post('create_folder', {
       path: "#{folder_path}/#{@other_folder_name}"
