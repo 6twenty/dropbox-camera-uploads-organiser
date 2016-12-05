@@ -5,4 +5,5 @@
 require './app'
 
 DateOrganiser.new.run!
+sleep 1
 CameraOrganiser.new.run!
