@@ -41,6 +41,8 @@ class DateOrganiser
 
     @files = {}
     @folders = []
+    @jobs = []
+    @failed_jobs = []
   end
 
   def run!
@@ -50,6 +52,12 @@ class DateOrganiser
     get_files
     create_folders if (@files.keys - @folders).any?
     move_files if @files.values.flatten.any?
+
+    if @jobs.any?
+      puts "Awaiting #{@jobs.length} batch move jobs:"
+      puts "-> ."
+      await_jobs
+    end
 
     puts "Finished.\n\n"
   end
@@ -130,6 +138,35 @@ class DateOrganiser
 
     if data['.tag'] == 'async_job_id'
       puts "-> Job ID: #{data['async_job_id']}"
+      @jobs << data['async_job_id']
+    end
+  end
+
+  def await_jobs
+    print "."
+
+    @jobs.select! do |job_id|
+      data = @client.post('move_batch/check', {
+        async_job_id: job_id
+      })
+
+      if data['.tag'] == 'failed'
+        @failed_jobs << job_id
+      end
+
+      # Only keep jobs that are still in progress
+      data['.tag'] == 'in_progress'
+    end
+
+    if @jobs.any?
+      sleep 5
+      await_jobs
+    else
+      puts "-> All batch move jobs complete."
+      if @failed_jobs.any?
+        print " Some jobs failed:"
+        @failed_jobs.each { |job_id| puts "   - #{job_id}" }
+      end
     end
   end
 
