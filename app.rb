@@ -180,26 +180,26 @@ end
 
 class CameraOrganiser
 
+  IPHONE_NAMES = [
+    'iPhone SE',
+    'iPhone 5c',
+    'iPhone 3GS'
+  ]
+
+  FOLDER_NAMES = {
+    iphone: 'iPhone',
+    videos: 'Videos',
+    other: 'Other'
+  }
+
   include AwaitJobs
 
   def initialize
     @client = Client.new('api.dropboxapi.com')
     @dl_client = Client.new('content.dropboxapi.com')
 
-    @other_folder_name = 'Other'
-    @iphone_5c = 'iPhone 5c'
-    @iphone_3gs = 'iPhone 3GS'
-    @processed_file_path = './processed'
-
     @jobs = []
     @failed_jobs = []
-
-    # Create the 'processed' file if it doesn't exist
-    File.open(@processed_file_path, 'a')
-
-    File.open(@processed_file_path, 'r') do |file|
-      @processed_files = file.read.split("\n")
-    end
   end
 
   def run!
@@ -230,14 +230,12 @@ class CameraOrganiser
       .map { |entry| entry['path_display'] }
       .sort
 
-    # Only the 2 most recent folders need to be processed
-    @folders = @folders.last(2)
-
     puts " Done."
-    puts "-> Processing #{@folders.length} folders."
   end
 
   def process_folders
+    puts "-> Processing #{@folders.length} folders."
+
     @folders.each do |folder_path|
       process_folder(folder_path)
     end
@@ -251,49 +249,59 @@ class CameraOrganiser
     })
 
     puts " Done."
-    puts "-> Scanning #{data['entries'].length} files."
+    puts "-> Scanning #{data['entries'].length} entries."
 
     files = []
 
     has_other_folder = false
+    has_videos_folder = false
+    has_iphone_folder = false
 
     data['entries'].each do |entry|
-      if entry['.tag'] == 'folder' && entry['name'] == @other_folder_name
-        has_other_folder = true
+      if entry['.tag'] == 'folder'
+        has_other_folder = true if entry['name'] == FOLDER_NAMES[:other]
+        has_videos_folder = true if entry['name'] == FOLDER_NAMES[:videos]
+        has_iphone_folder = true if entry['name'] == FOLDER_NAMES[:iphone]
       end
 
       files << entry if entry['.tag'] == 'file'
     end
 
-    files_to_move = files.reduce([]) do |files, entry|
-      files.tap { |files| process_file(entry, files) }
+    grouped_files = files.reduce({ iphone: [], videos: [], other: [] }) do |hash, entry|
+      group = process_file(entry)
+      hash[group] << entry
+      hash
     end
 
-    create_other_folder(folder_path) unless has_other_folder
+    create_folder(folder_path, @other_folder_name) unless has_other_folder
+    create_folder(folder_path, @videos_folder_name) unless has_videos_folder
+    create_folder(folder_path, @iphone_folder_name) unless has_iphone_folder
 
-    other_path = "#{folder_path}/#{@other_folder_name}"
-    move_files(files_to_move, other_path) if files_to_move.any?
+    grouped_files.each do |group, files|
+      destination = "#{folder_path}/#{FOLDER_NAMES[group]}"
+      move_files(files, destination) if files.any?
+    end
   end
 
-  def process_file(entry, files)
-    return if @processed_files.include?(entry['path_display'])
-
-    # For now, only images are processed, not movies since
-    # they'd take a long time to download. Also movies are
-    # much more likely to be keepers anyway.
-    ext = entry['name'].split('.').last
-    return if ext =~ /mov/i
+  def process_file(entry)
+    # return if @processed_files.include?(entry['path_display'])
 
     puts "Processing #{entry['name']}"
 
-    download_and_save_file(entry)
-    process_temp_file(entry, files)
+    ext = entry['name'].split('.').last
 
-    @processed_files << entry['path_display']
-
-    File.open(@processed_file_path, 'a') do |file|
-      file.puts entry['path_display']
+    if ext =~ /mov/i
+      return :videos
     end
+
+    download_and_save_file(entry)
+    process_temp_file(entry)
+
+    # @processed_files << entry['path_display']
+
+    # File.open(@processed_file_path, 'a') do |file|
+    #   file.puts entry['path_display']
+    # end
   end
 
   def download_and_save_file(entry)
@@ -304,15 +312,12 @@ class CameraOrganiser
     File.open('./temp', 'w') { |file| file.write(body) }
   end
 
-  def process_temp_file(entry, files)
+  def process_temp_file(entry)
     exif = Exif::Data.new('./temp')
-
-    unless exif.model == @iphone_5c || exif.model == @iphone_3gs
-      files << entry
-    end
+    IPHONE_NAMES.include?(exif.model) ? :iphone : :other
   rescue => e
     # Can't read EXIF - not likely to be an iPhone photo
-    files << entry
+    :other
   ensure
     File.unlink('./temp')
   end
@@ -339,11 +344,11 @@ class CameraOrganiser
     end
   end
 
-  def create_other_folder(folder_path)
-    print "Creating folder '#{folder_path}/#{@other_folder_name}'..."
+  def create_folder(folder_path, folder_name)
+    print "Creating folder '#{folder_path}/#{folder_name}'..."
 
     @client.post('create_folder', {
-      path: "#{folder_path}/#{@other_folder_name}"
+      path: "#{folder_path}/#{folder_name}"
     })
 
     puts " Done."
