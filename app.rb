@@ -30,7 +30,7 @@ module AwaitJobs
     else
       puts "\n-> All batch move jobs complete."
       if @failed_jobs.any?
-        print " Some jobs failed:\n"
+        print " #{@failed_jobs.size} jobs failed:\n"
         @failed_jobs.each { |job_id| puts "   - #{job_id}" }
       end
     end
