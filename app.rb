@@ -29,10 +29,13 @@ module AwaitJobs
       await_jobs
     else
       puts "\n-> All batch move jobs complete."
-      if @failed_jobs.any?
-        print " #{@failed_jobs.size} jobs failed:\n"
-        @failed_jobs.each { |job_id| puts "   - #{job_id}" }
-      end
+    end
+  end
+
+  def handle_failed_jobs
+    if @failed_jobs.any?
+      print " #{@failed_jobs.size} jobs failed:\n"
+      @failed_jobs.each { |job_id| puts "   - #{job_id}" }
     end
   end
 
@@ -91,6 +94,7 @@ class DateOrganiser
       puts "Awaiting #{@jobs.length} batch move jobs:"
       print "\n-> ."
       await_jobs
+      handle_failed_jobs
     end
 
     puts "Finished.\n\n"
@@ -213,6 +217,7 @@ class CameraOrganiser
       puts "Awaiting #{@jobs.length} batch move jobs:"
       print "\n-> ."
       await_jobs
+      handle_failed_jobs
     end
 
     puts "Finished.\n\n"
@@ -341,6 +346,11 @@ class CameraOrganiser
     if data['.tag'] == 'async_job_id'
       puts "-> Job ID: #{data['async_job_id']}"
       @jobs << data['async_job_id']
+    end
+
+    if @jobs.size > 10
+      puts "--- Reached max async jobs, awaiting..."
+      await_jobs
     end
   end
 
